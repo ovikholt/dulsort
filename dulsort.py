@@ -107,7 +107,7 @@ class Main:
       if mustRunDiskusage:
         self.display(myFileList)
         for waiting in scheduledForDiskusageRun:
-          print '..... %s' % waiting
+          print('..... %s' % waiting)
         diskusageStartTime = time.time()
         output = subprocess.check_output(['du', '-ks'] + scheduledForDiskusageRun)
         elapsedTime = time.time() - diskusageStartTime
@@ -127,18 +127,18 @@ class Main:
         self.needsCleanup = True
 
     if self.needsCleanup:
-      print
+      print('')
       os.system('cls' if os.name == 'nt' else 'clear')
-    print '========================='
+    print('=========================')
 
     myFileList.sort()
     for myFile in myFileList:
-      print myFile
-    print '========================='
+      print(myFile)
+    print('=========================')
     (a, b) = len(myFileList), self.cacheHitCount
     percentage = int(b*100.0/a) if a is not 0 else 100
-    print 'total files: %d (cache hit: %d -- %d%%)' % \
-      (a, b, percentage)
+    print('total files: %d (cache hit: %d -- %d%%)' % \
+      (a, b, percentage))
 
 
   def display(self, myFileList):
@@ -147,9 +147,10 @@ class Main:
     emptyLineCount = terminal_line_count - len(myFileList)
     myFileList.sort()
     for i in range(emptyLineCount):
-      print
+      print('')
     for myFile in myFileList[-terminal_line_count:]:
-      print myFile
+      print(myFile)
+
 
 
 
@@ -159,8 +160,10 @@ if __name__ == '__main__':
   try:
     main.run()
   except KeyboardInterrupt:
-    print
+    print('')
   finally:
     main.end()
     end=time.time()
-    print 'total time spent:',end-start
+    print('total time spent:', end-start)
+
+
