@@ -2,6 +2,8 @@
 
 # Disk usage ls, sorted by size, human readable sizes
 
+from __future__ import print_function
+
 try:
   import os
   import cPickle
