@@ -85,7 +85,7 @@ class Main:
     for index in range(filesAndDirectoriesCount):
       filename = filesAndDirectories[index]
       try:
-        stat_tuple = os.stat(filename)
+        stat_tuple = os.lstat(filename)
         key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
         st_mtime = stat_tuple.st_mtime
       except TypeError:
@@ -116,7 +116,7 @@ class Main:
           if regexpMatch is not None:
             matchGroups = regexpMatch.groups()
             (kbSizeStr, name) = matchGroups
-            stat_tuple = os.stat(name)
+            stat_tuple = os.lstat(name)
             key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
             st_mtime = stat_tuple.st_mtime
             myFile = MyFile(kbSizeStr, name, st_mtime)
