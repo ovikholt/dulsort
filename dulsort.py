@@ -54,13 +54,14 @@ class MyFile:
 class Main:
   def __init__(self):
     home=os.environ['HOME']
+    cacheFileAbsPath = os.path.join(home, 'Library', 'Caches', 'com.norsemind.dulsort-cache.pickle')
     try:
-      self.cacheFile=open(os.path.join(home, '.cache', 'dulsort-cache.pickle'), 'r+')
+      self.cacheFile=open(cacheFileAbsPath, 'r+')
       self.cache = cPickle.load(self.cacheFile)
       self.cacheFile.seek(0)
       # print 'loaded cache, length is', len(self.cache)
     except IOError:
-      self.cacheFile=open(os.path.join(home, '.cache', 'dulsort-cache.pickle'), 'w')
+      self.cacheFile=open(cacheFileAbsPath, 'w')
       self.cache = {}
       # print 'made new cache'
     self.loadedCacheLen = len(self.cache)
