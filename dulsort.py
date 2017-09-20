@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 # Disk usage ls, sorted by size, human readable sizes
 
@@ -60,7 +60,7 @@ class Main:
       self.cache = cPickle.load(self.cacheFile)
       self.cacheFile.seek(0)
       # print 'loaded cache, length is', len(self.cache)
-    except IOError:
+    except (IOError, EOFError) as e:
       self.cacheFile=open(cacheFileAbsPath, 'w')
       self.cache = {}
       # print 'made new cache'
