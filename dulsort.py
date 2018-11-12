@@ -3,32 +3,48 @@
 # Disk usage ls, sorted by size, human readable sizes
 
 try:
+  from itertools import zip_longest
   import os
   import pickle
-  import subprocess
   import re
+  import subprocess
   import time
 except KeyboardInterrupt:
   exit()
 
 class MyFile:
   def __lt__(self, other):
+    if other.kbSize is None:
+      return True
+    if self.kbSize is None:
+      return False
     return self.kbSize < other.kbSize
 
-  def __init__(self):
-    kbSize = None
-    humanReadableSize = None
-    name = None
-    mtime = None
-    key = None
+  @property
+  def isComputed(self):
+    """Is it computed?"""
+    return self.kbSize is not None
 
-  def __init__(self, kbSizeStr, name, mtime, key):
-    kbSize = int(kbSizeStr)
-    self.humanReadableSize = self.getHumanReadableSize(kbSize)
-    self.mtime = mtime
+  @property
+  def humanReadableSize(self):
+    """Show kbSize nicely"""
+    return self.getHumanReadableSize(self.kbSize)
+
+  @property
+  def isntSmall(self):
+    return self.kbSize >= 1024.0
+
+  def __init__(self, name, kbSizeStr=None):
     self.name = name
-    self.kbSize = kbSize
+    [key, mtime] = getKeyAndMtime(name)
+    self.mtime = mtime
     self.key = key
+    self.kbSize = None
+    if kbSizeStr is not None:
+      self.setSize(kbSizeStr)
+
+  def setSize(self, kbSizeStr):
+    self.kbSize = int(kbSizeStr)
 
   def getHumanReadableSize(self, kbSize):
     mb = kbSize / 1024.0
@@ -48,10 +64,10 @@ class MyFile:
     return (lg_fmt+'K') % kbSize
 
   def __str__(self):
-    return '%6s %s' % (self.humanReadableSize, self.name)
-
-  def __cmp__(self, myFile):
-    return self.kbSize - myFile.kbSize
+    if self.isComputed:
+      return '%6s %s' % (self.humanReadableSize, self.name)
+    else:
+      return '...... %s' % (self.name)
 
 
 def getKeyAndMtime(filename):
@@ -60,22 +76,27 @@ def getKeyAndMtime(filename):
   return [key, stat_tuple.st_mtime]
 
 
-def du(scheduledForDiskusageRun):
-  files = []
-  regexp = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
+SKIP_KB_REGEX = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
+
+
+def runDuAndAddInfoTo(files):
+  names = [f.name for f in files]
   try:
-    output = subprocess.check_output(['du', '-ks', '--'] + scheduledForDiskusageRun)
+    output = subprocess.check_output(['du', '-ks', '--'] + names)
   except subprocess.CalledProcessError:
-    output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
+    output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + names)
   for one_line in output.decode('utf-8').split('\n'):
-    regexpMatch = regexp.search(one_line)
+    regexpMatch = SKIP_KB_REGEX.search(one_line)
     if regexpMatch is not None:
       matchGroups = regexpMatch.groups()
-      (kbSizeStr, name) = matchGroups
-      [key, mtime] = getKeyAndMtime(name)
-      myFile = MyFile(kbSizeStr, name, mtime, key)
-      files.append(myFile)
-  return files
+      (kbSizeStr, filename) = matchGroups
+      file = [f for f in files if f.name == filename][0]
+      file.setSize(kbSizeStr)
+
+
+def grouper(n, iterable, padvalue=None):
+  "grouper(3, 'abcdefg', 'x') --> ('a','b','c'), ('d','e','f'), ('g','x','x')"
+  return zip_longest(*[iter(iterable)]*n, fillvalue=padvalue)
 
 
 class Main:
@@ -94,6 +115,7 @@ class Main:
     self.loadedCacheLen = len(self.cache)
     self.cacheHitCount = 0
     self.needsCleanup = False
+    self.files = []
 
   def end(self):
     if self.cacheFile is not None:
@@ -102,72 +124,68 @@ class Main:
       pickle.dump(self.cache, self.cacheFile)
       self.cacheFile.close()
 
-  def run(self):
+  def getFromCache(self, filename):
+    try:
+      [key, mtime] = getKeyAndMtime(filename)
+    except TypeError:
+      key=None
+    if key in self.cache:
+      myFile = self.cache[key]
+      if mtime == myFile.mtime:
+        myFile.name = filename
+        self.cacheHitCount += 1
+        return myFile
+      else:
+        del self.cache[key]
+
+  def duAndCacheAndPrint(self, files):
+    for waitingFile in files:
+      print(waitingFile)
+    runDuAndAddInfoTo(files)
+    for file in files:
+      if file.key is not None:
+        self.cache[file.key] = file
+    self.displayCurses()
+
+  def getCurrentDirFilesAndFolderNames(self):
     direct = os.walk('.').__next__()
     (thisDir, directories, files) = direct
+    return directories + files
 
-    filesAndDirectories = directories + files
-    filesAndDirectoriesCount = len(filesAndDirectories)
-    scheduledForDiskusageRun = []
-    myFileList=[]
-    for index in range(filesAndDirectoriesCount):
-      filename = filesAndDirectories[index]
-      try:
-        [key, mtime] = getKeyAndMtime(filename)
-      except TypeError:
-        key=None
-      if key in self.cache:
-        myFile = self.cache[key]
-        if mtime == myFile.mtime:
-          myFile.name = filename
-          myFileList.append(myFile)
-          self.cacheHitCount += 1
-        else:
-          del self.cache[key]
-      if key not in self.cache:
-        scheduledForDiskusageRun.append(filename)
-      manyFilesCollected = len(scheduledForDiskusageRun) >= 3
-      someFilesCollected = len(scheduledForDiskusageRun) > 0
-      lastFileReached = index >= filesAndDirectoriesCount - 1
-      mustRunDiskusage = (lastFileReached and someFilesCollected) or manyFilesCollected
-      if mustRunDiskusage:
-        self.display(myFileList)
-        for waiting in scheduledForDiskusageRun:
-          print('..... %s' % waiting)
-        newMyFiles = du(scheduledForDiskusageRun)
-        for file in newMyFiles:
-          myFileList.append(file)
-          if file.key is not None:
-            self.cache[file.key] = file
-        scheduledForDiskusageRun = []
-        self.needsCleanup = True
+  def summonFile(self, filename):
+    return self.getFromCache(filename) or MyFile(filename)
 
-    if self.needsCleanup:
-      print('')
-      os.system('cls' if os.name == 'nt' else 'clear')
+  def run(self):
+    filenames = self.getCurrentDirFilesAndFolderNames()
+    self.files = [self.summonFile(f) for f in filenames]
+    scheduledForDiskusageRun = [f for f in self.files if not f.isComputed]
+    chunks = grouper(3, scheduledForDiskusageRun)
+    [self.duAndCacheAndPrint([f for f in chunk if f is not None]) for chunk in chunks]
+    print('')
+    os.system('cls' if os.name == 'nt' else 'clear')
     print('=========================')
-
-    myFileList.sort()
-    for myFile in myFileList:
-      print(myFile)
+    self.display()
     print('=========================')
-    (a, b) = len(myFileList), self.cacheHitCount
+    (a, b) = len(self.files), self.cacheHitCount
     percentage = int(b*100.0/a) if a is not 0 else 100
     print('total files: %d (cache hit: %d -- %d%%)' % \
       (a, b, percentage))
 
-
-  def display(self, myFileList):
-    terminal_line_count, _ = map(
-        int, os.popen('stty size', 'r').read().split())
-    emptyLineCount = terminal_line_count - len(myFileList)
-    myFileList.sort()
-    for i in range(emptyLineCount):
-      print('')
-    for myFile in myFileList[-terminal_line_count:]:
+  def displayCurses(self):
+    completed = [f for f in self.files if f.isComputed]
+    terminal_line_count, _ = map(int, os.popen('stty size', 'r').read().split())
+    emptyLineCount = terminal_line_count - len(completed)
+    [print('') for i in range(emptyLineCount)]
+    completed.sort()
+    for myFile in completed[-terminal_line_count:]:
       print(myFile)
 
-
+  def display(self):
+    completed = [f for f in self.files if f.isComputed]
+    terminal_line_count, _ = map(int, os.popen('stty size', 'r').read().split())
+    completed.sort()
+    for myFile in completed[-terminal_line_count:]:
+      print(myFile)
 
 
 if __name__ == '__main__':
