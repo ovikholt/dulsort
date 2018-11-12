@@ -137,10 +137,10 @@ class Main:
         for waiting in scheduledForDiskusageRun:
           print('..... %s' % waiting)
         newMyFiles = du(scheduledForDiskusageRun)
-        for myFile in newMyFiles:
-          myFileList.append(myFile)
-          if myFile.key is not None:
-            self.cache[myFile.key] = myFile
+        for file in newMyFiles:
+          myFileList.append(file)
+          if file.key is not None:
+            self.cache[file.key] = file
         scheduledForDiskusageRun = []
         self.needsCleanup = True
 
