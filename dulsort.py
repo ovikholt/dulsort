@@ -20,13 +20,15 @@ class MyFile:
     humanReadableSize = None
     name = None
     mtime = None
+    key = None
 
-  def __init__(self, kbSizeStr, name, mtime):
+  def __init__(self, kbSizeStr, name, mtime, key):
     kbSize = int(kbSizeStr)
     self.humanReadableSize = self.getHumanReadableSize(kbSize)
     self.mtime = mtime
     self.name = name
     self.kbSize = kbSize
+    self.key = key
 
   def getHumanReadableSize(self, kbSize):
     mb = kbSize / 1024.0
@@ -50,6 +52,26 @@ class MyFile:
 
   def __cmp__(self, myFile):
     return self.kbSize - myFile.kbSize
+
+
+def du(scheduledForDiskusageRun):
+  files = []
+  regexp = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
+  try:
+    output = subprocess.check_output(['du', '-ks', '--'] + scheduledForDiskusageRun)
+  except subprocess.CalledProcessError:
+    output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
+  for one_line in output.decode('utf-8').split('\n'):
+    regexpMatch = regexp.search(one_line)
+    if regexpMatch is not None:
+      matchGroups = regexpMatch.groups()
+      (kbSizeStr, name) = matchGroups
+      stat_tuple = os.lstat(name)
+      st_mtime = stat_tuple.st_mtime
+      key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
+      myFile = MyFile(kbSizeStr, name, st_mtime, key)
+      files.append(myFile)
+  return files
 
 
 class Main:
@@ -77,7 +99,6 @@ class Main:
       self.cacheFile.close()
 
   def run(self):
-    regexp = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
     direct = os.walk('.').__next__()
     (thisDir, directories, files) = direct
 
@@ -112,22 +133,11 @@ class Main:
         self.display(myFileList)
         for waiting in scheduledForDiskusageRun:
           print('..... %s' % waiting)
-        try:
-          output = subprocess.check_output(['du', '-ks', '--'] + scheduledForDiskusageRun)
-        except subprocess.CalledProcessError:
-          output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
-        for one_line in output.decode('utf-8').split('\n'):
-          regexpMatch = regexp.search(one_line)
-          if regexpMatch is not None:
-            matchGroups = regexpMatch.groups()
-            (kbSizeStr, name) = matchGroups
-            stat_tuple = os.lstat(name)
-            key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
-            st_mtime = stat_tuple.st_mtime
-            myFile = MyFile(kbSizeStr, name, st_mtime)
-            myFileList.append(myFile)
-            if key is not None:
-              self.cache[key] = myFile
+        newMyFiles = du(scheduledForDiskusageRun)
+        for myFile in newMyFiles:
+          myFileList.append(myFile)
+          if myFile.key is not None:
+            self.cache[myFile.key] = myFile
         scheduledForDiskusageRun = []
         self.needsCleanup = True
 
