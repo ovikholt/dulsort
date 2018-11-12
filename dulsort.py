@@ -108,7 +108,6 @@ class Main:
 
     filesAndDirectories = directories + files
     filesAndDirectoriesCount = len(filesAndDirectories)
-    progressString = ''
     scheduledForDiskusageRun = []
     myFileList=[]
     for index in range(filesAndDirectoriesCount):
