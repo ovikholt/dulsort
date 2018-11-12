@@ -112,12 +112,10 @@ class Main:
         self.display(myFileList)
         for waiting in scheduledForDiskusageRun:
           print('..... %s' % waiting)
-        diskusageStartTime = time.time()
         try:
           output = subprocess.check_output(['du', '-ks', '--'] + scheduledForDiskusageRun)
         except subprocess.CalledProcessError:
           output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
-        elapsedTime = time.time() - diskusageStartTime
         for one_line in output.decode('utf-8').split('\n'):
           regexpMatch = regexp.search(one_line)
           if regexpMatch is not None:
