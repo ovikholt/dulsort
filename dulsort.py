@@ -113,7 +113,6 @@ class Main:
     for index in range(filesAndDirectoriesCount):
       filename = filesAndDirectories[index]
       try:
-        stat_tuple = os.lstat(filename)
         [key, mtime] = getKeyAndMtime(filename)
       except TypeError:
         key=None
