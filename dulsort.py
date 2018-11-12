@@ -54,6 +54,12 @@ class MyFile:
     return self.kbSize - myFile.kbSize
 
 
+def getKeyAndMtime(filename):
+  stat_tuple = os.lstat(filename)
+  key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
+  return [key, stat_tuple.st_mtime]
+
+
 def du(scheduledForDiskusageRun):
   files = []
   regexp = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
@@ -66,10 +72,8 @@ def du(scheduledForDiskusageRun):
     if regexpMatch is not None:
       matchGroups = regexpMatch.groups()
       (kbSizeStr, name) = matchGroups
-      stat_tuple = os.lstat(name)
-      st_mtime = stat_tuple.st_mtime
-      key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
-      myFile = MyFile(kbSizeStr, name, st_mtime, key)
+      [key, mtime] = getKeyAndMtime(name)
+      myFile = MyFile(kbSizeStr, name, mtime, key)
       files.append(myFile)
   return files
 
@@ -111,13 +115,12 @@ class Main:
       filename = filesAndDirectories[index]
       try:
         stat_tuple = os.lstat(filename)
-        key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
-        st_mtime = stat_tuple.st_mtime
+        [key, mtime] = getKeyAndMtime(filename)
       except TypeError:
         key=None
       if key in self.cache:
         myFile = self.cache[key]
-        if st_mtime == myFile.mtime:
+        if mtime == myFile.mtime:
           myFile.name = filename
           myFileList.append(myFile)
           self.cacheHitCount += 1
