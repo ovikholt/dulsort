@@ -112,7 +112,10 @@ class Main:
         for waiting in scheduledForDiskusageRun:
           print('..... %s' % waiting)
         diskusageStartTime = time.time()
-        output = subprocess.check_output(['du', '-ks'] + scheduledForDiskusageRun)
+        try:
+          output = subprocess.check_output(['du', '-ks', '--'] + scheduledForDiskusageRun)
+        except subprocess.CalledProcessError:
+          output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
         elapsedTime = time.time() - diskusageStartTime
         for one_line in output.split('\n'):
           regexpMatch = regexp.search(one_line)
