@@ -1,12 +1,10 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 # Disk usage ls, sorted by size, human readable sizes
 
-from __future__ import print_function
-
 try:
   import os
-  import cPickle
+  import pickle
   import subprocess
   import re
   import time
@@ -14,6 +12,9 @@ except KeyboardInterrupt:
   exit()
 
 class MyFile:
+  def __lt__(self, other):
+    return self.kbSize < other.kbSize
+
   def __init__(self):
     kbSize = None
     humanReadableSize = None
@@ -56,12 +57,12 @@ class Main:
     home=os.environ['HOME']
     cacheFileAbsPath = os.path.join(home, 'Library', 'Caches', 'com.norsemind.dulsort-cache.pickle')
     try:
-      self.cacheFile=open(cacheFileAbsPath, 'r+')
-      self.cache = cPickle.load(self.cacheFile)
+      self.cacheFile = open(cacheFileAbsPath, 'rb+')
+      self.cache = pickle.load(self.cacheFile)
       self.cacheFile.seek(0)
       # print 'loaded cache, length is', len(self.cache)
     except (IOError, EOFError) as e:
-      self.cacheFile=open(cacheFileAbsPath, 'w')
+      self.cacheFile=open(cacheFileAbsPath, 'wb')
       self.cache = {}
       # print 'made new cache'
     self.loadedCacheLen = len(self.cache)
@@ -72,12 +73,12 @@ class Main:
     if self.cacheFile is not None:
       # print 'New items added to the cache: %d. Cache size now %d items. Cache hit count: %d' % (
       #     len(self.cache)-self.loadedCacheLen, len(self.cache), self.cacheHitCount)
-      cPickle.dump(self.cache, self.cacheFile)
+      pickle.dump(self.cache, self.cacheFile)
       self.cacheFile.close()
 
   def run(self):
-    regexp=re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
-    direct = os.walk('.').next()
+    regexp = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
+    direct = os.walk('.').__next__()
     (thisDir, directories, files) = direct
 
     filesAndDirectories = directories + files
@@ -117,7 +118,7 @@ class Main:
         except subprocess.CalledProcessError:
           output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + scheduledForDiskusageRun)
         elapsedTime = time.time() - diskusageStartTime
-        for one_line in output.split('\n'):
+        for one_line in output.decode('utf-8').split('\n'):
           regexpMatch = regexp.search(one_line)
           if regexpMatch is not None:
             matchGroups = regexpMatch.groups()
