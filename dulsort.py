@@ -12,6 +12,23 @@ try:
 except KeyboardInterrupt:
   exit()
 
+def toHumanReadableSize(kbSize):
+  mb = kbSize / 1024.0
+  gb = mb / 1024.0
+  sm_fmt = '%.1f'
+  lg_fmt = '%.0f'
+  if gb > 1:
+    if gb < 10:
+      return (sm_fmt+'G') % gb
+    return (lg_fmt+'G') % gb
+  if mb > 1:
+    if mb < 10:
+      return (sm_fmt+'M') % mb
+    return (lg_fmt+'M') % mb
+  if kbSize < 10:
+    return (sm_fmt+'K') % kbSize
+  return (lg_fmt+'K') % kbSize
+
 class MyFile:
   def __lt__(self, other):
     if other.kbSize is None:
@@ -28,7 +45,7 @@ class MyFile:
   @property
   def humanReadableSize(self):
     """Show kbSize nicely"""
-    return self.getHumanReadableSize(self.kbSize)
+    return toHumanReadableSize(self.kbSize)
 
   @property
   def isntSmall(self):
@@ -45,23 +62,6 @@ class MyFile:
 
   def setSize(self, kbSizeStr):
     self.kbSize = int(kbSizeStr)
-
-  def getHumanReadableSize(self, kbSize):
-    mb = kbSize / 1024.0
-    gb = mb / 1024.0
-    sm_fmt = '%.1f'
-    lg_fmt = '%.0f'
-    if gb > 1:
-      if gb < 10:
-        return (sm_fmt+'G') % gb
-      return (lg_fmt+'G') % gb
-    if mb > 1:
-      if mb < 10:
-        return (sm_fmt+'M') % mb
-      return (lg_fmt+'M') % mb
-    if kbSize < 10:
-      return (sm_fmt+'K') % kbSize
-    return (lg_fmt+'K') % kbSize
 
   def __str__(self):
     if self.isComputed:
@@ -170,6 +170,13 @@ class Main:
     percentage = int(b*100.0/a) if a is not 0 else 100
     print('total files: %d (cache hit: %d -- %d%%)' % \
       (a, b, percentage))
+    print('total size: %s' % toHumanReadableSize(self.getTotalSize()))
+
+  def getTotalSize(self):
+    total = 0
+    for myFile in self.files:
+      total += myFile.kbSize
+    return total
 
   def displayCurses(self):
     completed = [f for f in self.files if f.isComputed]
