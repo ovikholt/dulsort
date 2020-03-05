@@ -1,7 +1,9 @@
 # dulsort
 Command-line tool to identify large-sized directories quickly
 
-![Dulsort Demo Usage Video](dulsort-demo.gif)
+#![Dulsort Demo Usage Video](dulsort-demo.gif)
+
+<img src="dulsort-demo.gif" data-canonical-src="https://github.com/ovikholt/dulsort/blob/master/dulsort-demo.gif" width="480">
 
 You could also just do
 
