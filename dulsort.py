@@ -76,7 +76,7 @@ def getKeyAndMtime(filename):
   return [key, stat_tuple.st_mtime]
 
 
-SKIP_KB_REGEX = re.compile('([0-9\.]+)\s+(.*)')  # skip kilobyte and smaller
+SKIP_KB_REGEX = re.compile('([0-9\.]+)\t+(.*)')  # skip kilobyte and smaller
 
 
 def runDuAndAddInfoTo(files):
