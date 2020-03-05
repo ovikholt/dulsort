@@ -7,4 +7,4 @@ You could also just do
 
     du -sch .* * 2>/dev/null | sort --human-numeric-sort
 
-though...
+though... but it's not as fun, and you don't get the pretty colors.
