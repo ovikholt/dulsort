@@ -9,8 +9,22 @@ try:
   import re
   import subprocess
   import time
+  import stat
 except KeyboardInterrupt:
   exit()
+
+# From
+# https://stackoverflow.com/questions/287871/how-to-print-colored-text-in-terminal-in-python
+# https://svn.blender.org/svnroot/bf-blender/trunk/blender/build_files/scons/tools/bcolors.py
+class BackgroundColors:
+  HEADER = '\033[95m'
+  OKBLUE = '\033[94m'
+  OKGREEN = '\033[92m'
+  WARNING = '\033[93m'
+  FAIL = '\033[91m'
+  ENDC = '\033[0m'
+  BOLD = '\033[1m'
+  UNDERLINE = '\033[4m'
 
 def toHumanReadableSize(kbSize):
   mb = kbSize / 1024.0
@@ -64,10 +78,14 @@ class MyFile:
     self.kbSize = int(kbSizeStr)
 
   def __str__(self):
-    if self.isComputed:
-      return '%6s %s' % (self.humanReadableSize, self.name)
+    if isDirectory(self.name):
+      decoratedName = BackgroundColors.OKBLUE + self.name + BackgroundColors.ENDC + '/'
     else:
-      return '...... %s' % (self.name)
+      decoratedName = self.name
+    if self.isComputed:
+      return '%6s %s' % (self.humanReadableSize, decoratedName)
+    else:
+      return '...... %s' % (decoratedName)
 
 
 def getKeyAndMtime(filename):
@@ -75,6 +93,9 @@ def getKeyAndMtime(filename):
   key = str(stat_tuple.st_dev) + str(stat_tuple.st_ino)
   return [key, stat_tuple.st_mtime]
 
+def isDirectory(filename):
+  stat_tuple = os.lstat(filename)
+  return stat.S_ISDIR(stat_tuple.st_mode)
 
 SKIP_KB_REGEX = re.compile('([0-9\.]+)\t+(.*)')  # skip kilobyte and smaller
 
