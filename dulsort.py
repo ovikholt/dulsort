@@ -100,13 +100,38 @@ def isDirectory(filename):
 SKIP_KB_REGEX = re.compile('([0-9\.]+)\t+(.*)')  # skip kilobyte and smaller
 
 
+def makeFakeDuOutput(name):
+  return '0\t' + name
+
+
+def duOneWithFallback(name):
+  try:
+    aSingleOutput = subprocess.check_output(['sudo', 'du', '-ks', '--', name])
+  except subprocess.CalledProcessError:
+    aSingleOutput = makeFakeDuOutput(name)
+  return aSingleOutput
+
+
+def oneAtATimeWithFallback(names):
+  # Do one at a time, and fall back to assuming the size is 0
+  lines = []
+  for name in names:
+    aSingleOutput = duOneWithFallback(name)
+    lines.append(aSingleOutput)
+  outputFromAll3 = '\n'.join(lines).encode('utf-8')
+  return outputFromAll3
+
+
 def runDuAndAddInfoTo(files):
   names = [f.name for f in files]
   try:
-    output = subprocess.check_output(['du', '-ks', '--'] + names)
+    outputFromAll3 = subprocess.check_output(['du', '-ks', '--'] + names)
   except subprocess.CalledProcessError:
-    output = subprocess.check_output(['sudo', 'du', '-ks', '--'] + names)
-  for one_line in output.decode('utf-8').split('\n'):
+    try:
+      outputFromAll3 = subprocess.check_output(['sudo', 'du', '-ks', '--'] + names)
+    except subprocess.CalledProcessError:
+      outputFromAll3 = oneAtATimeWithFallback(names)
+  for one_line in outputFromAll3.decode('utf-8').split('\n'):
     regexpMatch = SKIP_KB_REGEX.search(one_line)
     if regexpMatch is not None:
       matchGroups = regexpMatch.groups()
