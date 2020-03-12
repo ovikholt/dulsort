@@ -101,34 +101,37 @@ SKIP_KB_REGEX = re.compile('([0-9\.]+)\t+(.*)')  # skip kilobyte and smaller
 
 
 def makeFakeDuOutput(name):
-  return '0\t' + name
+  return ('0\t' + name).encode('utf-8')
 
 
 def duOneWithFallback(name):
   try:
-    aSingleOutput = subprocess.check_output(['sudo', 'du', '-ks', '--', name])
+    outputBytes = subprocess.check_output(
+        ['sudo', 'du', '-ks', '--', name], stderr=subprocess.DEVNULL)
   except subprocess.CalledProcessError:
-    aSingleOutput = makeFakeDuOutput(name)
-  return aSingleOutput
+    outputBytes = makeFakeDuOutput(name)
+  return outputBytes
 
 
 def oneAtATimeWithFallback(names):
   # Do one at a time, and fall back to assuming the size is 0
   lines = []
   for name in names:
-    aSingleOutput = duOneWithFallback(name)
-    lines.append(aSingleOutput)
-  outputFromAll3 = '\n'.join(lines).encode('utf-8')
+    outputBytes = duOneWithFallback(name)
+    lines.append(outputBytes)
+  outputFromAll3 = b'\n'.join(lines)
   return outputFromAll3
 
 
 def runDuAndAddInfoTo(files):
   names = [f.name for f in files]
   try:
-    outputFromAll3 = subprocess.check_output(['du', '-ks', '--'] + names)
+    outputFromAll3 = subprocess.check_output(
+        ['du', '-ks', '--'] + names, stderr=subprocess.DEVNULL)
   except subprocess.CalledProcessError:
     try:
-      outputFromAll3 = subprocess.check_output(['sudo', 'du', '-ks', '--'] + names)
+      outputFromAll3 = subprocess.check_output(
+          ['sudo', 'du', '-ks', '--'] + names, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
       outputFromAll3 = oneAtATimeWithFallback(names)
   for one_line in outputFromAll3.decode('utf-8').split('\n'):
