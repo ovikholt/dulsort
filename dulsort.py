@@ -106,11 +106,15 @@ def makeFakeDuOutput(name):
 
 def duOneWithFallback(name):
   try:
-    outputBytes = subprocess.check_output(
+    return subprocess.check_output(
         ['sudo', 'du', '-ks', '--', name], stderr=subprocess.DEVNULL)
-  except subprocess.CalledProcessError:
-    outputBytes = makeFakeDuOutput(name)
-  return outputBytes
+  except subprocess.CalledProcessError as e:
+    if e.output:
+      # If some subdirectories of 'name' resulted in Operation not permitted, du might still produce
+      # an output, which in that case we should use. Try eg. your ~/Library/Containers directory.
+      return e.output
+    else:
+      return makeFakeDuOutput(name)
 
 
 def oneAtATimeWithFallback(names):
@@ -180,7 +184,7 @@ class Main:
       key=None
     if key in self.cache:
       myFile = self.cache[key]
-      if mtime == myFile.mtime:
+      if mtime == myFile.mtime and filename != 'com.apple.mail':
         myFile.name = filename
         self.cacheHitCount += 1
         return myFile
